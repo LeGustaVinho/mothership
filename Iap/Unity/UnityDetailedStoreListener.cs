@@ -1,4 +1,5 @@
 ﻿using System;
+using LegendaryTools;
 using UnityEngine;
 using UnityEngine.Purchasing;
 using UnityEngine.Purchasing.Extension;
@@ -30,7 +31,8 @@ namespace LegedaryTools.Mothership.Iap
         {
             if (ProcessPurchased == null)
             {
-                Debug.LogError("[UnityDetailedStoreListener:ProcessPurchase] ProcessPurchased callback cannot be null.");
+                if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
+                    Debug.LogError("[UnityDetailedStoreListener:ProcessPurchase] ProcessPurchased callback cannot be null.");
                 return default;
             }
             return ProcessPurchased(purchaseEvent);

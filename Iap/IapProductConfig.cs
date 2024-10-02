@@ -79,6 +79,8 @@ namespace LegedaryTools.Mothership.Iap
         }
     }
     
+    
+    [CreateAssetMenu(menuName = "Tools/Mothership/Iap/IapProductConfig", fileName = "IapProductConfig", order = 0)]
     public class IapProductConfig : UniqueScriptableObject
     {
         public ProductTypeWrapper Type;

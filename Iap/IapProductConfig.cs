@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using LegendaryTools;
 using UnityEngine;
-using UnityEngine.Purchasing;
 
 namespace LegedaryTools.Mothership.Iap
 {
@@ -66,17 +65,9 @@ namespace LegedaryTools.Mothership.Iap
             this.data = data;
         }
 
-        public static implicit operator PayoutDefinitionWrapper(PayoutDefinition payout)
-        {
-            return new PayoutDefinitionWrapper(payout.type.ToPayoutTypeWrapper(), payout.subtype, payout.quantity, 
-                payout.data);
-        }
+        #if ENABLE_UNITY_IAP
 
-        public static implicit operator PayoutDefinition(PayoutDefinitionWrapper payoutDefinitionWrapper)
-        {
-            return new PayoutDefinition(payoutDefinitionWrapper.Type.ToPayoutType(), payoutDefinitionWrapper.Subtype, 
-                payoutDefinitionWrapper.Quantity, payoutDefinitionWrapper.Data);
-        }
+        #endif
     }
     
     

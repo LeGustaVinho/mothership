@@ -1,0 +1,20 @@
+{
+    "name": "LegendaryTools.Mothership.Ads.AppLovinMaxIntegration",
+    "rootNamespace": "",
+    "references": [
+        "GUID:7917be64b73927f458595461a3e103d7",
+        "GUID:2247f345c1389cb428906dc038800b93",
+        "GUID:a4cfc1a18fa3a469b96d885db522f42e"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ENABLE_MAX_ADS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

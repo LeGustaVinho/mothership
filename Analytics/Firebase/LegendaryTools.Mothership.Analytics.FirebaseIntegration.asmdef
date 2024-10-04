@@ -1,0 +1,19 @@
+{
+    "name": "LegendaryTools.Mothership.Analytics.FirebaseIntegration",
+    "rootNamespace": "",
+    "references": [
+        "GUID:2247f345c1389cb428906dc038800b93",
+        "GUID:7917be64b73927f458595461a3e103d7"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ENABLE_FIREBASE_ANALYTICS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

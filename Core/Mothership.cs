@@ -43,6 +43,21 @@ namespace LegedaryTools.Mothership
                 Debug.Log($"[{nameof(Mothership)}:{nameof(Initialize)}] Initialized.");
         }
 
+        public T GetModuleOfType<T>()
+            where T : MothershipModule
+        {
+            foreach (MothershipModule mothershipModule in Config.Modules)
+            {
+                if (mothershipModule is T requestedModule) return requestedModule;
+            }
+            return null;
+        }
+        
+        public MothershipModule GetModuleByName<T>(string name)
+        {
+            return Array.Find(Config.Modules, item => item.name == name);
+        }
+        
         public void Dispose()
         {
             foreach (MothershipModule module in Config.Modules)

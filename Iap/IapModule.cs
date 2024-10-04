@@ -1,69 +1,150 @@
 ﻿using System;
-using System.Threading.Tasks;
-using LegendaryTools;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace LegedaryTools.Mothership.Iap
 {
     [CreateAssetMenu(menuName = "Tools/Mothership/Modules/IapModule", fileName = "IapModule", order = 0)]
-    public class IapModule : MothershipModule
+    public class IapModule : MothershipModule, IIapProvider
     {
-        public IapProvider[] Providers;
-        public override async Task Initialize()
+        public Func<IapProductConfig, PurchaseProcessingResultWrapper> ProcessPurchasedProduct
         {
-            if (IsInitialized) return;
-            if (!Enabled) return;
-            
-            if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Info))
-                Debug.Log($"[{nameof(IapModule)}:{nameof(Initialize)}] Initializing ....");
-            
-            foreach (IapProvider provider in Providers)
+            get
             {
-                if(provider.IsInitialized) continue;
-                if(!provider.Enabled) continue;
-                Task initTask = provider.Initialize(); //Should have a CancellationToken ?
-                
-                if (await Task.WhenAny(initTask, Task.Delay(provider.TimeOut * 1000)) != initTask)
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
                 {
-                    Debug.LogError($"[{nameof(IapModule)}:{nameof(Initialize)}] {provider.GetType()} has timed out while initializing.");
-                    continue;
+                    return iapProvider.ProcessPurchasedProduct;
                 }
-                
-                if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Info))
-                    Debug.Log($"[{nameof(IapModule)}:{nameof(Initialize)}] {provider.GetType()} Initialized.");
+                return null;
             }
-
-            IsInitialized = true;
-            if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Info))
-                Debug.Log($"[{nameof(IapModule)}:{nameof(Initialize)}] Initialized.");
-        }
-
-        public override async void OnEnableChange(bool newMode)
-        {
-            if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Info))
-                Debug.Log($"[{nameof(IapModule)}:{nameof(OnEnableChange)}] state changed to {newMode}");
-            
-            if (newMode)
+            set
             {
-                await Initialize();
-            }
-            else
-            {
-                Dispose();
-                IsInitialized = false;
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    iapProvider.ProcessPurchasedProduct = value;
+                }
             }
         }
-
-        public override void Dispose()
+        public Func<IapProductConfig, bool> ValidateIfProductWasConsumed
         {
-            foreach (IapProvider provider in Providers)
+            get
             {
-                if(provider.IsInitialized && provider.Enabled)
-                    provider.Dispose();
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    return iapProvider.ValidateIfProductWasConsumed;
+                }
+                return null;
             }
-            
-            if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Info))
-                Debug.Log($"[{nameof(IapModule)}:{nameof(Dispose)}]");
+            set
+            {
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    iapProvider.ValidateIfProductWasConsumed = value;
+                }
+            }
+        }
+        public List<IapProductConfig> Products
+        {
+            get
+            {
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    return iapProvider.Products;
+                }
+                return new List<IapProductConfig>();
+            }
+        }
+        public event Action OnInitializationCompleted
+        {
+            add
+            {
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    iapProvider.OnInitializationCompleted += value;
+                }
+            }
+            remove
+            {
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    iapProvider.OnInitializationCompleted -= value;
+                }
+            }
+        }
+        public event Action<InitializationFailureReasonWrapper, string> OnInitializeFailed
+        {
+            add
+            {
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    iapProvider.OnInitializeFailed += value;
+                }
+            }
+            remove
+            {
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    iapProvider.OnInitializeFailed -= value;
+                }
+            }
+        }
+        public event Action<IapProductConfig, PurchaseProcessingResultWrapper> OnPurchaseResponse
+        {
+            add
+            {
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    iapProvider.OnPurchaseResponse += value;
+                }
+            }
+            remove
+            {
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    iapProvider.OnPurchaseResponse -= value;
+                }
+            }
+        }
+        public event Action<IapProductConfig, PurchaseFailureReasonWrapper, string> OnPurchaseFailed
+        {
+            add
+            {
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    iapProvider.OnPurchaseFailed += value;
+                }
+            }
+            remove
+            {
+                foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+                {
+                    iapProvider.OnPurchaseFailed -= value;
+                }
+            }
+        }
+        
+        public void InitiatePurchase(IapProductConfig product, string payload = "")
+        {
+            foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+            {
+                iapProvider.InitiatePurchase(product, payload);
+            }
+        }
+
+        public void InitiatePurchase(string productId, string payload = "")
+        {
+            foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+            {
+                iapProvider.InitiatePurchase(productId, payload);
+            }
+        }
+
+        public void ConfirmPendingPurchase(IapProductConfig product)
+        {
+            foreach (IapProvider iapProvider in SelectProvidersByBehaviour<IapProvider>())
+            {
+                iapProvider.ConfirmPendingPurchase(product);
+            }
         }
     }
 }

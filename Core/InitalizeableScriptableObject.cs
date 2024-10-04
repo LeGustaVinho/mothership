@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace LegedaryTools.Mothership
 {
@@ -11,10 +12,10 @@ namespace LegedaryTools.Mothership
 #endif
         , IInitalizeable
     {
-#if !ODIN_INSPECTOR
-        [SerializeField]
+#if ODIN_INSPECTOR
+        [HideInInspector]
 #endif
-        protected bool enabled;
+        [UnityEngine.SerializeField] protected bool enabled;
 #if ODIN_INSPECTOR
         [Sirenix.OdinInspector.ShowInInspector]
 #endif
@@ -29,10 +30,10 @@ namespace LegedaryTools.Mothership
             }
         }
 
-#if !ODIN_INSPECTOR
-        [SerializeField]
+#if ODIN_INSPECTOR
+        [HideInInspector]
 #endif
-        protected int timeOut;
+        [SerializeField] protected int timeOut;
         
 #if ODIN_INSPECTOR
         [Sirenix.OdinInspector.ShowInInspector]

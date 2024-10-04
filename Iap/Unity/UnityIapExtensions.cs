@@ -1,9 +1,10 @@
-﻿using System;
+﻿#if ENABLE_UNITY_IAP
+using System;
 using UnityEngine.Purchasing;
 
 namespace LegedaryTools.Mothership.Iap
 {
-    public static class IapExtensions
+    public static class UnityIapExtensions
     {
         public static ProductTypeWrapper ToProductTypeWrapper(this ProductType type)
         {
@@ -124,5 +125,18 @@ namespace LegedaryTools.Mothership.Iap
                 _ => throw new ArgumentOutOfRangeException(nameof(wrapper), wrapper, null)
             };
         }
+        
+        public static PayoutDefinitionWrapper ToPayoutDefinitionWrapper(this UnityEngine.Purchasing.PayoutDefinition payout)
+        {
+            return new PayoutDefinitionWrapper(payout.type.ToPayoutTypeWrapper(), payout.subtype, payout.quantity, 
+                payout.data);
+        }
+
+        public static UnityEngine.Purchasing.PayoutDefinition FromPayoutDefinition(this PayoutDefinitionWrapper payoutDefinitionWrapper)
+        {
+            return new UnityEngine.Purchasing.PayoutDefinition(payoutDefinitionWrapper.Type.ToPayoutType(), payoutDefinitionWrapper.Subtype, 
+                payoutDefinitionWrapper.Quantity, payoutDefinitionWrapper.Data);
+        }
     }
 }
+#endif

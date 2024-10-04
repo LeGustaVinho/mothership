@@ -2,17 +2,21 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using LegendaryTools;
+using UnityEngine;
+
+#if ENABLE_UNITY_IAP
 using Unity.Services.Core;
 using Unity.Services.Core.Environments;
-using UnityEngine;
 using UnityEngine.Purchasing;
 using UnityEngine.Purchasing.Extension;
+#endif
 
-namespace LegedaryTools.Mothership.Iap
+namespace LegedaryTools.Mothership.Iap.Unity
 {
-    [CreateAssetMenu(menuName = "Tools/Mothership/UnityIapProvider", fileName = "UnityIapProvider", order = 0)]
+    [CreateAssetMenu(menuName = "Tools/Mothership/Iap/UnityIapProvider", fileName = "UnityIapProvider", order = 0)]
     public class UnityIapProvider : IapProvider
     {
+#if ENABLE_UNITY_IAP
         public string Environment = "production";
         public override List<IapProductConfig> Products => productCatalog.Products;
         public IExtensionProvider UnityExtensionProvider { get; private set; }
@@ -22,7 +26,9 @@ namespace LegedaryTools.Mothership.Iap
         [NonSerialized] private UnityDetailedStoreListener unityDetailedStoreListener;
         [NonSerialized] private readonly Bictionary<IapProductConfig, Product> productTable = 
             new Bictionary<IapProductConfig, Product>();
-        
+        public override Func<IapProductConfig, PurchaseProcessingResultWrapper> ProcessPurchasedProduct { get; set; }
+        public override Func<IapProductConfig, bool> ValidateIfProductWasConsumed { get; set; }
+
         public override event Action OnInitializationCompleted;
         public override event Action<InitializationFailureReasonWrapper, string> OnInitializeFailed;
         public override event Action<IapProductConfig, PurchaseProcessingResultWrapper> OnPurchaseResponse;
@@ -56,7 +62,7 @@ namespace LegedaryTools.Mothership.Iap
                     builder.AddProduct(productConfig.Guid,
                         productConfig.Type.ToProductType(),
                         ids,
-                        productConfig.PayoutDefinitions.ConvertAll<PayoutDefinition>((item) => item));
+                        productConfig.PayoutDefinitions.ConvertAll<PayoutDefinition>((item) => item.FromPayoutDefinition()));
                 }
 
                 unityDetailedStoreListener.OnInitialize += OnInitialize;
@@ -77,22 +83,6 @@ namespace LegedaryTools.Mothership.Iap
             }
         }
 
-        public override async void OnEnableChange(bool newMode)
-        {
-            if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Info))
-                Debug.Log($"[{nameof(UnityIapProvider)}:{nameof(OnEnableChange)}] state changed to {newMode}");
-            
-            if (newMode)
-            {
-                await Initialize();
-            }
-            else
-            {
-                Dispose();
-                IsInitialized = false;
-            }
-        }
-
         public override void InitiatePurchase(IapProductConfig productConfig, string payload = "")
         {
             if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Info))
@@ -101,13 +91,13 @@ namespace LegedaryTools.Mothership.Iap
             if (productConfig == null)
             {
                 if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
-                    Debug.LogError("[UnityIapProvider:InitiatePurchase] Product cannot be null.");
+                    Debug.LogError($"[{nameof(UnityIapProvider)}:{nameof(InitiatePurchase)}] Product cannot be null.");
             }
 
             if (!productTable.TryGetValue(productConfig, out Product nativeProduct))
             {
                 if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
-                    Debug.LogError($"[UnityIapProvider:InitiatePurchase] Native product was not found.");
+                    Debug.LogError($"[{nameof(UnityIapProvider)}:{nameof(InitiatePurchase)}] Native product was not found.");
                 return;
             }
             
@@ -123,7 +113,7 @@ namespace LegedaryTools.Mothership.Iap
             if (product == null)
             {
                 if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
-                    Debug.LogError($"[UnityIapProvider:InitiatePurchase({productId})] Native product was not found.");
+                    Debug.LogError($"[{nameof(UnityIapProvider)}:{nameof(InitiatePurchase)}({productId})] Native product was not found.");
                 return;
             }
             
@@ -138,13 +128,13 @@ namespace LegedaryTools.Mothership.Iap
             if (!productTable.TryGetValue(productConfig, out Product nativeProduct))
             {
                 if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
-                    Debug.LogError($"[UnityIapProvider:InitiatePurchase] Native product was not found.");
+                    Debug.LogError($"[{nameof(UnityIapProvider)}:{nameof(InitiatePurchase)}] Native product was not found.");
                 return;
             }
             
             unityStoreController.ConfirmPendingPurchase(nativeProduct);
         }
-
+        
         public override void Dispose()
         {
             if (!IsInitialized) return;
@@ -164,17 +154,23 @@ namespace LegedaryTools.Mothership.Iap
                 Debug.Log($"[{nameof(UnityIapProvider)}:{nameof(Dispose)}]");
         }
 
-        public override PurchaseProcessingResultWrapper ProcessPurchasedProduct(IapProductConfig iapProductConfig)
+        private PurchaseProcessingResultWrapper DefaultProcessPurchasedProduct(IapProductConfig iapProductConfig)
         {
             if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Info))
-                Debug.Log($"[{nameof(UnityIapProvider)}:{nameof(ProcessPurchasedProduct)}] Processing {iapProductConfig.name}");
+                Debug.Log($"[{nameof(UnityIapProvider)}:{nameof(DefaultProcessPurchasedProduct)}] Processing {iapProductConfig.name}");
             
             switch (iapProductConfig.Type)
             {
                 case ProductTypeWrapper.Consumable:
                 {
                     if (iapProductConfig.AutoConsume) return PurchaseProcessingResultWrapper.Complete;
-                    return ValidateIfProductWasConsumed(iapProductConfig)
+                    if (ValidateIfProductWasConsumed != null)
+                    {
+                        return ValidateIfProductWasConsumed(iapProductConfig) 
+                            ? PurchaseProcessingResultWrapper.Complete
+                            : PurchaseProcessingResultWrapper.Pending;
+                    }
+                    return DefaultValidateIfProductWasConsumed(iapProductConfig)
                         ? PurchaseProcessingResultWrapper.Complete
                         : PurchaseProcessingResultWrapper.Pending;
                 }
@@ -184,11 +180,10 @@ namespace LegedaryTools.Mothership.Iap
             }
         }
 
-        public override bool ValidateIfProductWasConsumed(IapProductConfig iapProductConfig)
+        private bool DefaultValidateIfProductWasConsumed(IapProductConfig iapProductConfig)
         {
             if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Info))
-                Debug.Log($"[{nameof(UnityIapProvider)}:{nameof(ValidateIfProductWasConsumed)}] Validated {iapProductConfig.name}");
-            
+                Debug.Log($"[{nameof(UnityIapProvider)}:{nameof(DefaultValidateIfProductWasConsumed)}] Validated {iapProductConfig.name}");
             return true;
         }
         
@@ -243,13 +238,13 @@ namespace LegedaryTools.Mothership.Iap
         private void OnErrorMissingProducts(InitializationFailureReason initializationFailureReason, string failureReason)
         {
             if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
-                Debug.LogError($"[UnityIapProvider:{nameof(OnErrorMissingProducts)}] {initializationFailureReason}, reason: {failureReason}");
+                Debug.LogError($"[{nameof(UnityIapProvider)}:{nameof(OnErrorMissingProducts)}] {initializationFailureReason}, reason: {failureReason}");
         }
 
         private void OnInitializeFail(InitializationFailureReason initializationFailureReason, string failureReason)
         {
             if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
-                Debug.LogError($"[UnityIapProvider:OnInitializeFail] {initializationFailureReason}, reason: {failureReason}");
+                Debug.LogError($"[{nameof(UnityIapProvider)}:OnInitializeFail] {initializationFailureReason}, reason: {failureReason}");
             OnInitializeFailed?.Invoke(initializationFailureReason.ToInitializationFailureReasonWrapper(), failureReason);
         }
 
@@ -257,12 +252,14 @@ namespace LegedaryTools.Mothership.Iap
         {
             if (!TryGetProductConfig(purchaseEventArgs.purchasedProduct, out IapProductConfig iapProductConfig))
             {
-                if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
-                    Debug.LogError($"[UnityIapProvider:ProcessPurchased] Iap product was not found.");
+                if (Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
+                    Debug.LogError($"[{nameof(UnityIapProvider)}:{nameof(ProcessPurchased)}] Iap product was not found.");
                 return PurchaseProcessingResult.Pending;
             }
 
-            PurchaseProcessingResult result = ProcessPurchasedProduct(iapProductConfig).ToPurchaseProcessingResult();
+            PurchaseProcessingResult result = ProcessPurchasedProduct == null
+                ? DefaultProcessPurchasedProduct(iapProductConfig).ToPurchaseProcessingResult()
+                : ProcessPurchasedProduct(iapProductConfig).ToPurchaseProcessingResult();
             OnPurchaseResponse?.Invoke(iapProductConfig, result.ToPurchaseProcessingResultWrapper());
             return result;
         }
@@ -272,19 +269,19 @@ namespace LegedaryTools.Mothership.Iap
             if (!productTable.TryGetValue(product, out iapProductConfig))
             {
                 if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Warning))
-                    Debug.LogWarning($"[UnityIapProvider:{nameof(TryGetProductConfig)}] Iap product {product.definition.id} was not found in productTable, trying another method ...");
+                    Debug.LogWarning($"[{nameof(UnityIapProvider)}:{nameof(TryGetProductConfig)}] Iap product {product.definition.id} was not found in productTable, trying another method ...");
 
                 if (productCatalog == null)
                 {
                     if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
-                        Debug.LogError($"[UnityIapProvider:{nameof(TryGetProductConfig)}] Product catalog is null.");
+                        Debug.LogError($"[{nameof(UnityIapProvider)}:{nameof(TryGetProductConfig)}] Product catalog is null.");
                 }
 
                 iapProductConfig = productCatalog.Products.Find(item => item.Guid == product.definition.id);
                 if (iapProductConfig == null)
                 {
                     if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
-                        Debug.LogError($"[UnityIapProvider:{nameof(TryGetProductConfig)}] Iap product was not found.");
+                        Debug.LogError($"[{nameof(UnityIapProvider)}:{nameof(TryGetProductConfig)}] Iap product was not found.");
                 }
             }
 
@@ -298,12 +295,25 @@ namespace LegedaryTools.Mothership.Iap
         {
             if (!TryGetProductConfig(product, out IapProductConfig productConfig))
             {
+                if (Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
+                {
+                    if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
+                        Debug.LogError(
+                            $"[{nameof(UnityIapProvider)}:{nameof(OnPurchaseFailedDesc)}] Native product {product.definition.id}, Reason: {purchaseFailureDescription.reason}, Message: {purchaseFailureDescription.message}");
+                    Debug.LogError(
+                        $"[{nameof(UnityIapProvider)}:{nameof(OnPurchaseFailedDesc)}] Native product {product.definition.id} was not found.");
+                }
+            }
+            else
+            {
                 if(Mothership.LogLevel.HasFlags(MothershipLogLevel.Error))
-                    Debug.LogError($"[UnityIapProvider:{nameof(OnPurchaseFailedDesc)}] Iap product was not found.");
+                    Debug.LogError(
+                        $"[{nameof(UnityIapProvider)}:{nameof(OnPurchaseFailedDesc)}] Iap product {productConfig.Guid}, Reason: {purchaseFailureDescription.reason}, Message: {purchaseFailureDescription.message}");
             }
             
             OnPurchaseFailed?.Invoke(productConfig, purchaseFailureDescription.reason.ToPurchaseFailureReasonWrapper(), 
                 purchaseFailureDescription.message);
         }
+#endif
     }
 }

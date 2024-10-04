@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if ENABLE_UNITY_IAP
+using System;
 using LegendaryTools;
 using UnityEngine;
 using UnityEngine.Purchasing;
@@ -49,3 +50,4 @@ namespace LegedaryTools.Mothership.Iap
         }
     }
 }
+#endif

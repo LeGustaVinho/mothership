@@ -9,6 +9,6 @@ namespace LegedaryTools.Mothership
         Info = 1,
         Warning = 2,
         Error = 4,
-        All = 8,
+        All = Info | Warning | Error,
     }
 }

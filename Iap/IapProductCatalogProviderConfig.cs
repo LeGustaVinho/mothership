@@ -5,9 +5,9 @@ namespace LegedaryTools.Mothership
 {
     public abstract class IapProductCatalogProviderConfig : 
 #if ODIN_INSPECTOR
-    Sirenix.OdinInspector.SerializedScriptableObject
+        Sirenix.OdinInspector.SerializedScriptableObject
 #else
-        ScriptableObject
+        UnityEngine.ScriptableObject
 #endif
     {
         public abstract Task<IapProductCatalogConfig> GetProductCatalog();
